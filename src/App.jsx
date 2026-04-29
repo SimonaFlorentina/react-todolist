@@ -32,6 +32,7 @@ function App() {
   const [draggedItemId, setDraggedItemId] = useState(null)
   const [remoteLoaded, setRemoteLoaded] = useState(false)
   const ownSaveRef = useRef(false)
+  const saveTimerRef = useRef(null)
 
   const itineraryRef = ref(db, 'itinerary')
 
@@ -296,9 +297,28 @@ function App() {
 
   useEffect(() => {
     if (days.length === 0) return
-    localStorage.setItem('itinerary', JSON.stringify({ days, location }))
-    if (!remoteLoaded) return
-    saveItinerary(days, location)
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      try {
+        localStorage.setItem('itinerary', JSON.stringify({ days, location }))
+      } catch (error) {
+        console.warn('LocalStorage save error:', error)
+      }
+
+      if (remoteLoaded) {
+        saveItinerary(days, location)
+      }
+    }, 250)
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+      }
+    }
   }, [days, location, remoteLoaded])
 
   useEffect(() => {
