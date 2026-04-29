@@ -28,9 +28,34 @@ body {
 
 h1 {
   color: #333;
-  margin-bottom: 25px;
+  margin-bottom: 15px;
   text-align: center;
   font-size: 32px;
+}
+
+.btn-undo {
+  display: block;
+  margin: 0 auto 20px;
+  padding: 10px 16px;
+  background: #ffc107;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn-undo:hover:not(:disabled) {
+  background: #ffb300;
+  transform: scale(1.05);
+}
+
+.btn-undo:disabled {
+  background: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
 }
 
 h2 {

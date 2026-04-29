@@ -10,6 +10,7 @@ const CATEGORIES = {
 
 function App() {
   const [days, setDays] = useState([])
+  const [history, setHistory] = useState([])
   const [currentDay, setCurrentDay] = useState(1)
   const [input, setInput] = useState('')
   const [price, setPrice] = useState('')
@@ -36,16 +37,35 @@ function App() {
     localStorage.setItem('itinerary', JSON.stringify(days))
   }, [days])
 
+  const updateDays = (newDays) => {
+    setHistory([...history, days])
+    setDays(newDays)
+  }
+
+  const undo = () => {
+    if (history.length === 0) return
+    const previousState = history[history.length - 1]
+    setDays(previousState)
+    setHistory(history.slice(0, -1))
+  }
+
   const addDay = () => {
     const newDay = Math.max(...days.map(d => d.day), 0) + 1
-    setDays([...days, { day: newDay, items: [] }])
+    updateDays([...days, { day: newDay, items: [] }])
     setCurrentDay(newDay)
   }
 
   const deleteDay = (dayNum) => {
-    if (days.length === 1) return
+    if (days.length === 1) {
+      alert('Nu poți șterge singura zi!')
+      return
+    }
+    
+    const confirmed = window.confirm(`Ești sigur că vrei să ștergi Ziua ${dayNum}? Această acțiune nu poate fi anulată direct, dar poți folosi butonul Undo.`)
+    if (!confirmed) return
+    
     const updated = days.filter(d => d.day !== dayNum)
-    setDays(updated)
+    updateDays(updated)
     setCurrentDay(updated[0].day)
   }
 
@@ -69,7 +89,7 @@ function App() {
       }
       return d
     })
-    setDays(updatedDays)
+    updateDays(updatedDays)
     setInput('')
     setPrice('')
     setTime('')
@@ -87,7 +107,7 @@ function App() {
       }
       return d
     })
-    setDays(updated)
+    updateDays(updated)
   }
 
   const toggleItem = (dayNum, itemId) => {
@@ -102,7 +122,7 @@ function App() {
       }
       return d
     })
-    setDays(updated)
+    updateDays(updated)
   }
 
   const handleDragStart = (e, itemId) => {
@@ -133,7 +153,7 @@ function App() {
       }
       return d
     })
-    setDays(updatedDays)
+    updateDays(updatedDays)
     setDraggedItemId(null)
   }
 
@@ -151,6 +171,15 @@ function App() {
     <div className="container">
       <div className="itinerary-app">
         <h1>✈️ Itinerariu Vacanță</h1>
+
+        <button 
+          onClick={undo} 
+          disabled={history.length === 0}
+          className="btn-undo"
+          title="Undo last action"
+        >
+          ↶ Undo ({history.length})
+        </button>
 
         {/* Days Navigation */}
         <div className="days-nav">
