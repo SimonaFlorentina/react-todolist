@@ -179,9 +179,9 @@ function App() {
   }
 
   const currentDayData = days.find(d => d.day === currentDay) || { items: [] }
-  const dayTotal = currentDayData.items.reduce((sum, item) => sum + (item.price || 0), 0)
+  const dayTotal = (currentDayData.items || []).reduce((sum, item) => sum + (item.price || 0), 0)
   const tripTotal = days.reduce((sum, day) => 
-    sum + day.items.reduce((daySum, item) => daySum + (item.price || 0), 0), 0
+    sum + ((day.items || []).reduce((daySum, item) => daySum + (item.price || 0), 0)), 0
   )
 
   const handleKeyPress = (e) => {
