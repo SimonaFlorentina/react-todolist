@@ -237,19 +237,21 @@ function App() {
       const remote = snapshot.val()
       if (remote) {
         const { days: parsedDays, location: parsedLocation } = normalizeRemoteData(remote)
-        setDays(parsedDays)
+        const sortedDays = parsedDays.slice().sort((a, b) => a.day - b.day)
+        setDays(sortedDays)
         setLocation(parsedLocation)
         setLocationQuery(parsedLocation.name)
-        if (parsedDays.length > 0) setCurrentDay(parsedDays[0].day)
+        setCurrentDay((current) => sortedDays.some(d => d.day === current) ? current : (sortedDays[0]?.day ?? 1))
       } else if (localData) {
         try {
           const parsed = JSON.parse(localData)
           const { days: parsedDays, location: parsedLocation } = normalizeRemoteData(parsed)
-          setDays(parsedDays)
+          const sortedDays = parsedDays.slice().sort((a, b) => a.day - b.day)
+          setDays(sortedDays)
           setLocation(parsedLocation)
           setLocationQuery(parsedLocation.name)
-          if (parsedDays.length > 0) setCurrentDay(parsedDays[0].day)
-          saveItinerary(parsedDays, parsedLocation)
+          setCurrentDay(sortedDays[0]?.day ?? 1)
+          saveItinerary(sortedDays, parsedLocation)
         } catch (error) {
           const initial = [{ day: 1, date: new Date().toISOString().slice(0, 10), items: [] }]
           setDays(initial)
@@ -323,7 +325,8 @@ function App() {
     
     const updated = days.filter(d => d.day !== dayNum)
     updateDays(updated)
-    setCurrentDay(updated[0].day)
+    const nextDay = updated.find(d => d.day > dayNum) || updated[0]
+    setCurrentDay(nextDay.day)
   }
 
   const addItem = () => {
