@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { ref, onValue, set } from 'firebase/database'
+import { db } from './firebase'
 
 const CATEGORIES = {
   transport: { emoji: '🛫', label: 'Transport' },
@@ -19,26 +21,38 @@ function App() {
   const [category, setCategory] = useState('activities')
   const [draggedItemId, setDraggedItemId] = useState(null)
 
-  // Load from localStorage
+  const itineraryRef = ref(db, 'itinerary')
+
   useEffect(() => {
-    const saved = localStorage.getItem('itinerary')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      setDays(parsed)
-      if (parsed.length > 0) setCurrentDay(1)
-    } else {
-      // Create first day
-      setDays([{ day: 1, items: [] }])
-    }
+    const localData = localStorage.getItem('itinerary')
+    const unsubscribe = onValue(itineraryRef, (snapshot) => {
+      const remote = snapshot.val()
+      if (remote) {
+        setDays(remote)
+        if (remote.length > 0) setCurrentDay(remote[0].day)
+      } else if (localData) {
+        const parsed = JSON.parse(localData)
+        setDays(parsed)
+        if (parsed.length > 0) setCurrentDay(parsed[0].day)
+        set(itineraryRef, parsed)
+      } else {
+        const initial = [{ day: 1, items: [] }]
+        setDays(initial)
+        set(itineraryRef, initial)
+      }
+    })
+
+    return () => unsubscribe()
   }, [])
 
-  // Save to localStorage
   useEffect(() => {
+    if (days.length === 0) return
     localStorage.setItem('itinerary', JSON.stringify(days))
+    set(itineraryRef, days)
   }, [days])
 
   const updateDays = (newDays) => {
-    setHistory([...history, days])
+    setHistory((prev) => [...prev, days])
     setDays(newDays)
   }
 
