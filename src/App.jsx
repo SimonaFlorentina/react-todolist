@@ -11,6 +11,12 @@ const CATEGORIES = {
 }
 
 function App() {
+  const defaultLocation = {
+    name: 'Bucharest, RO',
+    latitude: 44.4268,
+    longitude: 26.1025
+  }
+
   const [days, setDays] = useState([])
   const [history, setHistory] = useState([])
   const [currentDay, setCurrentDay] = useState(1)
@@ -19,6 +25,10 @@ function App() {
   const [time, setTime] = useState('')
   const [link, setLink] = useState('')
   const [category, setCategory] = useState('activities')
+  const [location, setLocation] = useState(defaultLocation)
+  const [locationQuery, setLocationQuery] = useState(defaultLocation.name)
+  const [locationMessage, setLocationMessage] = useState('')
+  const [weatherCache, setWeatherCache] = useState({})
   const [draggedItemId, setDraggedItemId] = useState(null)
 
   const itineraryRef = ref(db, 'itinerary')
@@ -30,16 +40,115 @@ function App() {
   }
 
   const normalizeDay = (day) => {
-    if (!day || typeof day !== 'object') return { day: 1, items: [] }
+    if (!day || typeof day !== 'object') return { day: 1, date: new Date().toISOString().slice(0, 10), items: [] }
     return {
       ...day,
+      date: day.date || new Date().toISOString().slice(0, 10),
       items: normalizeItems(day.items)
     }
   }
 
   const normalizeRemoteData = (remote) => {
-    const raw = Array.isArray(remote) ? remote : (remote && typeof remote === 'object' ? Object.values(remote) : [])
-    return raw.map(normalizeDay)
+    const rawDays = Array.isArray(remote)
+      ? remote
+      : remote && typeof remote === 'object' && remote.days
+        ? Array.isArray(remote.days)
+          ? remote.days
+          : Object.values(remote.days)
+        : []
+    const locationData = remote && typeof remote === 'object' && remote.location
+      ? remote.location
+      : defaultLocation
+
+    return {
+      days: rawDays.map(normalizeDay),
+      location: {
+        name: locationData.name || defaultLocation.name,
+        latitude: locationData.latitude || defaultLocation.latitude,
+        longitude: locationData.longitude || defaultLocation.longitude
+      }
+    }
+  }
+
+  const formatDate = (value) => {
+    if (!value) return ''
+    try {
+      return new Date(value).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' })
+    } catch {
+      return value
+    }
+  }
+
+  const saveItinerary = (daysToSave, locationToSave) => {
+    set(itineraryRef, {
+      days: daysToSave,
+      location: locationToSave
+    })
+  }
+
+  const weatherCodeToDescription = (code) => {
+    if (code === 0) return 'Senin'
+    if ([1, 2, 3].includes(code)) return 'Parțial senin'
+    if ([45, 48].includes(code)) return 'Cețos'
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'Ploios'
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return 'Ninsoare'
+    if ([95, 96, 99].includes(code)) return 'Furtună'
+    return 'Noros'
+  }
+
+  const fetchWeatherForRange = async (startDate, endDate) => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe/Bucharest&start_date=${startDate}&end_date=${endDate}`
+      const response = await fetch(url)
+      const data = await response.json()
+      if (!data || !data.daily) return
+
+      const newCache = {}
+      data.daily.time.forEach((date, index) => {
+        newCache[date] = {
+          description: weatherCodeToDescription(data.daily.weathercode[index]),
+          tempMin: data.daily.temperature_2m_min[index],
+          tempMax: data.daily.temperature_2m_max[index]
+        }
+      })
+      setWeatherCache((prev) => ({ ...prev, ...newCache }))
+    } catch (error) {
+      console.error('Weather fetch error:', error)
+    }
+  }
+
+  const getForecastRange = (dates) => {
+    if (!dates.length) return null
+    const sorted = dates.slice().sort()
+    return {
+      minDate: sorted[0],
+      maxDate: sorted[sorted.length - 1]
+    }
+  }
+
+  const searchLocation = async () => {
+    if (!locationQuery.trim()) return
+    try {
+      setLocationMessage('Caut locație...')
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationQuery)}&count=1&language=ro&format=json`
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data && data.results && data.results.length > 0) {
+        const result = data.results[0]
+        const newLocation = {
+          name: `${result.name}, ${result.country}`,
+          latitude: result.latitude,
+          longitude: result.longitude
+        }
+        setLocation(newLocation)
+        setLocationQuery(newLocation.name)
+        setLocationMessage(`Locație schimbată la ${newLocation.name}`)
+        return
+      }
+      setLocationMessage('Locație negăsită. Folosesc locația implicită.')
+    } catch (error) {
+      setLocationMessage('Eroare la căutarea locației.')
+    }
   }
 
   useEffect(() => {
@@ -47,19 +156,29 @@ function App() {
     const unsubscribe = onValue(itineraryRef, (snapshot) => {
       const remote = snapshot.val()
       if (remote) {
-        const parsedRemote = normalizeRemoteData(remote)
-        setDays(parsedRemote)
-        if (parsedRemote.length > 0) setCurrentDay(parsedRemote[0].day)
+        const { days: parsedDays, location: parsedLocation } = normalizeRemoteData(remote)
+        setDays(parsedDays)
+        setLocation(parsedLocation)
+        setLocationQuery(parsedLocation.name)
+        if (parsedDays.length > 0) setCurrentDay(parsedDays[0].day)
       } else if (localData) {
-        const parsed = JSON.parse(localData)
-        const normalized = parsed.map(normalizeDay)
-        setDays(normalized)
-        if (normalized.length > 0) setCurrentDay(normalized[0].day)
-        set(itineraryRef, normalized)
+        try {
+          const parsed = JSON.parse(localData)
+          const { days: parsedDays, location: parsedLocation } = normalizeRemoteData(parsed)
+          setDays(parsedDays)
+          setLocation(parsedLocation)
+          setLocationQuery(parsedLocation.name)
+          if (parsedDays.length > 0) setCurrentDay(parsedDays[0].day)
+          saveItinerary(parsedDays, parsedLocation)
+        } catch (error) {
+          const initial = [{ day: 1, date: new Date().toISOString().slice(0, 10), items: [] }]
+          setDays(initial)
+          saveItinerary(initial, defaultLocation)
+        }
       } else {
-        const initial = [{ day: 1, items: [] }]
+        const initial = [{ day: 1, date: new Date().toISOString().slice(0, 10), items: [] }]
         setDays(initial)
-        set(itineraryRef, initial)
+        saveItinerary(initial, defaultLocation)
       }
     })
 
@@ -68,9 +187,22 @@ function App() {
 
   useEffect(() => {
     if (days.length === 0) return
-    localStorage.setItem('itinerary', JSON.stringify(days))
-    set(itineraryRef, days)
-  }, [days])
+    localStorage.setItem('itinerary', JSON.stringify({ days, location }))
+    saveItinerary(days, location)
+  }, [days, location])
+
+  useEffect(() => {
+    const dates = days.map(d => d.date).filter(Boolean)
+    const range = getForecastRange(dates)
+    if (!range) return
+    const today = new Date().toISOString().slice(0, 10)
+    const maxForecast = new Date()
+    maxForecast.setDate(new Date().getDate() + 16)
+    const maxForecastDate = maxForecast.toISOString().slice(0, 10)
+    const startDate = today
+    const endDate = range.maxDate > maxForecastDate ? maxForecastDate : range.maxDate
+    fetchWeatherForRange(startDate, endDate)
+  }, [days, location])
 
   const updateDays = (newDays) => {
     setHistory((prev) => [...prev, days])
@@ -86,8 +218,18 @@ function App() {
 
   const addDay = () => {
     const newDay = Math.max(...days.map(d => d.day), 0) + 1
-    updateDays([...days, { day: newDay, items: [] }])
+    const lastDate = days[days.length - 1]?.date || new Date().toISOString().slice(0, 10)
+    const nextDate = (() => {
+      const d = new Date(lastDate)
+      d.setDate(d.getDate() + 1)
+      return d.toISOString().slice(0, 10)
+    })()
+    updateDays([...days, { day: newDay, date: nextDate, items: [] }])
     setCurrentDay(newDay)
+  }
+
+  const updateDayDate = (dayNum, date) => {
+    updateDays(days.map(d => d.day === dayNum ? { ...d, date } : d))
   }
 
   const deleteDay = (dayNum) => {
@@ -192,7 +334,8 @@ function App() {
     setDraggedItemId(null)
   }
 
-  const currentDayData = days.find(d => d.day === currentDay) || { items: [] }
+  const currentDayData = days.find(d => d.day === currentDay) || { date: new Date().toISOString().slice(0, 10), items: [] }
+  const currentWeather = weatherCache[currentDayData.date]
   const dayTotal = (currentDayData.items || []).reduce((sum, item) => sum + (item.price || 0), 0)
   const tripTotal = days.reduce((sum, day) => 
     sum + ((day.items || []).reduce((daySum, item) => daySum + (item.price || 0), 0)), 0
@@ -206,6 +349,18 @@ function App() {
     <div className="container">
       <div className="itinerary-app">
         <h1>✈️ Itinerariu Vacanță</h1>
+
+        <div className="location-row">
+          <input
+            type="text"
+            value={locationQuery}
+            onChange={(e) => setLocationQuery(e.target.value)}
+            placeholder="Locație vacanță"
+            className="input location-input"
+          />
+          <button onClick={searchLocation} className="btn-search-location">Caută</button>
+        </div>
+        <div className="location-message">{locationMessage || `Locație: ${location.name}`}</div>
 
         <button 
           onClick={undo} 
@@ -224,7 +379,7 @@ function App() {
                 onClick={() => setCurrentDay(d.day)}
                 className={`day-btn ${currentDay === d.day ? 'active' : ''}`}
               >
-                Ziua {d.day}
+                Ziua {d.day} ({formatDate(d.date)})
               </button>
               {days.length > 1 && (
                 <button
@@ -243,7 +398,29 @@ function App() {
         {/* Add Item Form */}
         <div className="form-section">
           <h2>Ziua {currentDay}</h2>
-          
+          <div className="day-date-row">
+            <div className="date-field">
+              <label>Data:</label>
+              <input
+                type="date"
+                value={currentDayData.date}
+                onChange={(e) => updateDayDate(currentDay, e.target.value)}
+                className="input-date"
+              />
+            </div>
+            <div className="weather-card">
+              {currentWeather ? (
+                <>
+                  <div className="weather-label">Vremea {formatDate(currentDayData.date)}</div>
+                  <div className="weather-value">{currentWeather.description}</div>
+                  <div className="weather-temp">{currentWeather.tempMin.toFixed(0)}° / {currentWeather.tempMax.toFixed(0)}°</div>
+                </>
+              ) : (
+                <div className="weather-empty">Prognoza apare aici după alegerea datei.</div>
+              )}
+            </div>
+          </div>
+
           <div className="form-group">
             <input
               type="text"
