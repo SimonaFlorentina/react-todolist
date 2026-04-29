@@ -86,7 +86,9 @@ function App() {
       : remote && typeof remote === 'object' && remote.days
         ? Array.isArray(remote.days)
           ? remote.days
-          : Object.values(remote.days)
+          : Object.keys(remote.days)
+              .sort((a, b) => Number(a) - Number(b))
+              .map((key) => remote.days[key])
         : []
     const locationData = remote && typeof remote === 'object' && remote.location
       ? remote.location
@@ -96,8 +98,8 @@ function App() {
       days: rawDays.map(normalizeDay),
       location: {
         name: locationData.name || defaultLocation.name,
-        latitude: locationData.latitude || defaultLocation.latitude,
-        longitude: locationData.longitude || defaultLocation.longitude
+        latitude: typeof locationData.latitude === 'number' ? locationData.latitude : defaultLocation.latitude,
+        longitude: typeof locationData.longitude === 'number' ? locationData.longitude : defaultLocation.longitude
       }
     }
   }
@@ -111,11 +113,25 @@ function App() {
     }
   }
 
+  const toFirebaseList = (array) => {
+    if (!Array.isArray(array)) return {}
+    return array.reduce((acc, item, index) => {
+      acc[index] = item
+      return acc
+    }, {})
+  }
+
   const saveItinerary = (daysToSave, locationToSave) => {
-    const cleanedDays = daysToSave.map(normalizeDay)
+    const cleanedDays = daysToSave.map((day) => {
+      const normalized = normalizeDay(day)
+      return {
+        ...normalized,
+        items: toFirebaseList(normalizeItems(normalized.items))
+      }
+    })
     const cleanedLocation = normalizeLocation(locationToSave)
     set(itineraryRef, {
-      days: cleanedDays,
+      days: toFirebaseList(cleanedDays),
       location: cleanedLocation
     })
   }
