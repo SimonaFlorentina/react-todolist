@@ -30,6 +30,8 @@ function App() {
   const [locationMessage, setLocationMessage] = useState('')
   const [weatherCache, setWeatherCache] = useState({})
   const [draggedItemId, setDraggedItemId] = useState(null)
+  const [remoteLoaded, setRemoteLoaded] = useState(false)
+  const ownSaveRef = useRef(false)
 
   const itineraryRef = ref(db, 'itinerary')
 
@@ -130,9 +132,12 @@ function App() {
       }
     })
     const cleanedLocation = normalizeLocation(locationToSave)
+    ownSaveRef.current = true
     set(itineraryRef, {
       days: toFirebaseList(cleanedDays),
       location: cleanedLocation
+    }).finally(() => {
+      ownSaveRef.current = false
     })
   }
 
@@ -251,6 +256,11 @@ function App() {
     const localData = localStorage.getItem('itinerary')
     const unsubscribe = onValue(itineraryRef, (snapshot) => {
       const remote = snapshot.val()
+      if (ownSaveRef.current) {
+        setRemoteLoaded(true)
+        return
+      }
+
       if (remote) {
         const { days: parsedDays, location: parsedLocation } = normalizeRemoteData(remote)
         const sortedDays = parsedDays.slice().sort((a, b) => a.day - b.day)
@@ -278,6 +288,7 @@ function App() {
         setDays(initial)
         saveItinerary(initial, defaultLocation)
       }
+      setRemoteLoaded(true)
     })
 
     return () => unsubscribe()
@@ -286,8 +297,9 @@ function App() {
   useEffect(() => {
     if (days.length === 0) return
     localStorage.setItem('itinerary', JSON.stringify({ days, location }))
+    if (!remoteLoaded) return
     saveItinerary(days, location)
-  }, [days, location])
+  }, [days, location, remoteLoaded])
 
   useEffect(() => {
     const dates = days.map(d => d.date).filter(Boolean)
