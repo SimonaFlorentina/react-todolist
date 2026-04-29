@@ -13,8 +13,10 @@ function App() {
   const [currentDay, setCurrentDay] = useState(1)
   const [input, setInput] = useState('')
   const [price, setPrice] = useState('')
+  const [time, setTime] = useState('')
   const [link, setLink] = useState('')
   const [category, setCategory] = useState('activities')
+  const [draggedItemId, setDraggedItemId] = useState(null)
 
   // Load from localStorage
   useEffect(() => {
@@ -48,7 +50,7 @@ function App() {
   }
 
   const addItem = () => {
-    if (!input.trim() || !price.trim()) return
+    if (!input.trim()) return
 
     const updatedDays = days.map(d => {
       if (d.day === currentDay) {
@@ -58,7 +60,8 @@ function App() {
             id: Date.now(),
             title: input,
             category,
-            price: parseFloat(price),
+            price: price ? parseFloat(price) : 0,
+            time,
             link,
             done: false
           }]
@@ -69,6 +72,7 @@ function App() {
     setDays(updatedDays)
     setInput('')
     setPrice('')
+    setTime('')
     setLink('')
     setCategory('activities')
   }
@@ -99,6 +103,38 @@ function App() {
       return d
     })
     setDays(updated)
+  }
+
+  const handleDragStart = (e, itemId) => {
+    setDraggedItemId(itemId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e, targetItemId) => {
+    e.preventDefault()
+    if (draggedItemId === targetItemId) return
+
+    const updatedDays = days.map(d => {
+      if (d.day === currentDay) {
+        const items = [...d.items]
+        const draggedIndex = items.findIndex(item => item.id === draggedItemId)
+        const targetIndex = items.findIndex(item => item.id === targetItemId)
+        
+        if (draggedIndex > -1 && targetIndex > -1) {
+          [items[draggedIndex], items[targetIndex]] = [items[targetIndex], items[draggedIndex]]
+        }
+        
+        return { ...d, items }
+      }
+      return d
+    })
+    setDays(updatedDays)
+    setDraggedItemId(null)
   }
 
   const currentDayData = days.find(d => d.day === currentDay) || { items: [] }
@@ -154,6 +190,13 @@ function App() {
               className="input"
             />
             
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="input-time"
+            />
+            
             <select 
               value={category} 
               onChange={(e) => setCategory(e.target.value)}
@@ -170,7 +213,7 @@ function App() {
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="Preț"
+              placeholder="Preț (optional)"
               step="0.01"
               className="input-price"
             />
@@ -197,7 +240,12 @@ function App() {
         {/* Items List */}
         <ul className="items-list">
           {currentDayData.items.map(item => (
-            <li key={item.id} className={`item ${item.done ? 'done' : ''}`}>
+            <li key={item.id} className={`item ${item.done ? 'done' : ''}`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, item.id)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, item.id)}
+            >
               <div className="item-header">
                 <input
                   type="checkbox"
@@ -206,8 +254,9 @@ function App() {
                   className="checkbox"
                 />
                 <span className="category-badge">{CATEGORIES[item.category].emoji}</span>
+                {item.time && <span className="item-time">⏰ {item.time}</span>}
                 <span className="item-title">{item.title}</span>
-                <span className="item-price">{item.price.toFixed(2)} €</span>
+                {item.price > 0 && <span className="item-price">{item.price.toFixed(2)} €</span>}
               </div>
               
               <div className="item-footer">

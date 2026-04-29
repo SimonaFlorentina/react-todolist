@@ -121,7 +121,7 @@ h2 {
 
 .form-group {
   display: grid;
-  grid-template-columns: 1fr 120px 100px 1fr 80px;
+  grid-template-columns: 1fr 80px 120px 100px 1fr 80px;
   gap: 10px;
   align-items: center;
 }
@@ -129,6 +129,7 @@ h2 {
 .input,
 .select,
 .input-price,
+.input-time,
 .input-link {
   padding: 12px;
   border: 2px solid #e0e0e0;
@@ -140,6 +141,7 @@ h2 {
 .input:focus,
 .select:focus,
 .input-price:focus,
+.input-time:focus,
 .input-link:focus {
   outline: none;
   border-color: #667eea;
@@ -209,11 +211,18 @@ h2 {
   border-radius: 10px;
   border-left: 4px solid #667eea;
   transition: all 0.3s;
+  cursor: grab;
+  user-select: none;
 }
 
 .item:hover {
   background: #f0f0f0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: grab;
+}
+
+.item:active {
+  cursor: grabbing;
 }
 
 .item.done {
@@ -239,6 +248,16 @@ h2 {
 .category-badge {
   font-size: 20px;
   flex-shrink: 0;
+}
+
+.item-time {
+  font-size: 13px;
+  background: #fff3cd;
+  color: #856404;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 .item-title {
@@ -326,7 +345,6 @@ h2 {
   background: #764ba2;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .form-group {
     grid-template-columns: 1fr;
@@ -339,5 +357,9 @@ h2 {
   
   .days-nav {
     justify-content: center;
+  }
+
+  .item-header {
+    flex-wrap: wrap;
   }
 }
