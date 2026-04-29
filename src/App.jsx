@@ -33,20 +33,52 @@ function App() {
 
   const itineraryRef = ref(db, 'itinerary')
 
+  const normalizeItem = (item) => {
+    if (!item || typeof item !== 'object') return null
+    return {
+      id: item.id ?? Date.now(),
+      title: item.title ?? '',
+      category: CATEGORIES[item.category] ? item.category : 'activities',
+      price: item.price ? Number(item.price) : 0,
+      time: item.time ?? '',
+      link: item.link ?? '',
+      done: Boolean(item.done)
+    }
+  }
+
   const normalizeItems = (items) => {
-    if (Array.isArray(items)) return items
-    if (items && typeof items === 'object') return Object.values(items)
+    if (Array.isArray(items)) {
+      return items.flatMap((item) => {
+        if (Array.isArray(item)) {
+          return item.map(normalizeItem).filter(Boolean)
+        }
+        const normalized = normalizeItem(item)
+        return normalized ? [normalized] : []
+      })
+    }
+    if (items && typeof items === 'object') {
+      return Object.values(items).map(normalizeItem).filter(Boolean)
+    }
     return []
   }
 
   const normalizeDay = (day) => {
-    if (!day || typeof day !== 'object') return { day: 1, date: new Date().toISOString().slice(0, 10), items: [] }
+    if (!day || typeof day !== 'object') {
+      return { day: 1, date: new Date().toISOString().slice(0, 10), items: [] }
+    }
+
     return {
-      ...day,
-      date: day.date || new Date().toISOString().slice(0, 10),
+      day: Number.isFinite(day.day) ? day.day : Number(day.day) || 1,
+      date: typeof day.date === 'string' && day.date ? day.date : new Date().toISOString().slice(0, 10),
       items: normalizeItems(day.items)
     }
   }
+
+  const normalizeLocation = (loc) => ({
+    name: loc?.name || defaultLocation.name,
+    latitude: typeof loc?.latitude === 'number' ? loc.latitude : defaultLocation.latitude,
+    longitude: typeof loc?.longitude === 'number' ? loc.longitude : defaultLocation.longitude
+  })
 
   const normalizeRemoteData = (remote) => {
     const rawDays = Array.isArray(remote)
@@ -80,9 +112,11 @@ function App() {
   }
 
   const saveItinerary = (daysToSave, locationToSave) => {
+    const cleanedDays = daysToSave.map(normalizeDay)
+    const cleanedLocation = normalizeLocation(locationToSave)
     set(itineraryRef, {
-      days: daysToSave,
-      location: locationToSave
+      days: cleanedDays,
+      location: cleanedLocation
     })
   }
 
