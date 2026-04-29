@@ -23,10 +23,23 @@ function App() {
 
   const itineraryRef = ref(db, 'itinerary')
 
-  const normalizeRemoteData = (remote) => {
-    if (Array.isArray(remote)) return remote
-    if (remote && typeof remote === 'object') return Object.values(remote)
+  const normalizeItems = (items) => {
+    if (Array.isArray(items)) return items
+    if (items && typeof items === 'object') return Object.values(items)
     return []
+  }
+
+  const normalizeDay = (day) => {
+    if (!day || typeof day !== 'object') return { day: 1, items: [] }
+    return {
+      ...day,
+      items: normalizeItems(day.items)
+    }
+  }
+
+  const normalizeRemoteData = (remote) => {
+    const raw = Array.isArray(remote) ? remote : (remote && typeof remote === 'object' ? Object.values(remote) : [])
+    return raw.map(normalizeDay)
   }
 
   useEffect(() => {
@@ -39,9 +52,10 @@ function App() {
         if (parsedRemote.length > 0) setCurrentDay(parsedRemote[0].day)
       } else if (localData) {
         const parsed = JSON.parse(localData)
-        setDays(parsed)
-        if (parsed.length > 0) setCurrentDay(parsed[0].day)
-        set(itineraryRef, parsed)
+        const normalized = parsed.map(normalizeDay)
+        setDays(normalized)
+        if (normalized.length > 0) setCurrentDay(normalized[0].day)
+        set(itineraryRef, normalized)
       } else {
         const initial = [{ day: 1, items: [] }]
         setDays(initial)
