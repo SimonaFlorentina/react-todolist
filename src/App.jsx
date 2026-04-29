@@ -63,7 +63,7 @@ function App() {
   }
 
   const normalizeDay = (day) => {
-    if (!day || typeof day !== 'object') {
+    if (!day || typeof day !== 'object' || Array.isArray(day)) {
       return { day: 1, date: new Date().toISOString().slice(0, 10), items: [] }
     }
 
@@ -130,6 +130,25 @@ function App() {
     return 'Noros'
   }
 
+  const getWeatherClass = (description) => {
+    const value = description?.toLowerCase() || ''
+    if (value.includes('senin') || value.includes('soare')) return 'sunny'
+    if (value.includes('ploios') || value.includes('furtună') || value.includes('tun')) return 'rainy'
+    if (value.includes('cețos') || value.includes('noros')) return 'cloudy'
+    if (value.includes('ninsoare')) return 'snowy'
+    return 'cloudy'
+  }
+
+  const getWeatherEmoji = (description) => {
+    const value = description?.toLowerCase() || ''
+    if (value.includes('senin')) return '☀️'
+    if (value.includes('parțial')) return '🌤️'
+    if (value.includes('ploios') || value.includes('furtună')) return '🌧️'
+    if (value.includes('cețos')) return '🌫️'
+    if (value.includes('ninsoare')) return '❄️'
+    return '⛅'
+  }
+
   const fetchWeatherForRange = async (startDate, endDate) => {
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe/Bucharest&start_date=${startDate}&end_date=${endDate}`
@@ -161,7 +180,10 @@ function App() {
   }
 
   const searchLocation = async () => {
-    if (!locationQuery.trim()) return
+    if (!locationQuery.trim()) {
+      setLocationMessage('Scrie o locație înainte de a căuta.')
+      return
+    }
     try {
       setLocationMessage('Caut locație...')
       const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationQuery)}&count=1&language=ro&format=json`
@@ -183,6 +205,30 @@ function App() {
     } catch (error) {
       setLocationMessage('Eroare la căutarea locației.')
     }
+  }
+
+  const useBrowserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage('Geolocația nu este disponibilă aici.')
+      return
+    }
+
+    setLocationMessage('Determin locația...')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newLocation = {
+          name: 'Locație actuală',
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        }
+        setLocation(newLocation)
+        setLocationQuery(newLocation.name)
+        setLocationMessage('Locația actuală a fost setată.')
+      },
+      () => {
+        setLocationMessage('Nu am putut obține locația actuală.')
+      }
+    )
   }
 
   useEffect(() => {
@@ -370,6 +416,8 @@ function App() {
 
   const currentDayData = days.find(d => d.day === currentDay) || { date: new Date().toISOString().slice(0, 10), items: [] }
   const currentWeather = weatherCache[currentDayData.date]
+  const weatherClass = currentWeather ? getWeatherClass(currentWeather.description) : ''
+  const weatherEmoji = currentWeather ? getWeatherEmoji(currentWeather.description) : '🌤️'
   const dayTotal = (currentDayData.items || []).reduce((sum, item) => sum + (item.price || 0), 0)
   const tripTotal = days.reduce((sum, day) => 
     sum + ((day.items || []).reduce((daySum, item) => daySum + (item.price || 0), 0)), 0
@@ -380,7 +428,7 @@ function App() {
   }
 
   return (
-    <div className="container">
+    <div className={`container ${weatherClass}`}>
       <div className="itinerary-app">
         <h1>✈️ Itinerariu Vacanță</h1>
 
@@ -393,6 +441,7 @@ function App() {
             className="input location-input"
           />
           <button onClick={searchLocation} className="btn-search-location">Caută</button>
+          <button onClick={useBrowserLocation} className="btn-location-now">Locație actuală</button>
         </div>
         <div className="location-message">{locationMessage || `Locație: ${location.name}`}</div>
 
