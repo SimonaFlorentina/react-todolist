@@ -77,6 +77,14 @@ function App() {
     }
   }
 
+  const canonicalizeDays = (daysList) => {
+    const normalized = daysList.map(normalizeDay)
+    return normalized.map((day, index) => ({
+      ...day,
+      day: index + 1
+    }))
+  }
+
   const normalizeLocation = (loc) => ({
     name: loc?.name || defaultLocation.name,
     latitude: typeof loc?.latitude === 'number' ? loc.latitude : defaultLocation.latitude,
@@ -98,7 +106,7 @@ function App() {
       : defaultLocation
 
     return {
-      days: rawDays.map(normalizeDay),
+      days: canonicalizeDays(rawDays),
       location: {
         name: locationData.name || defaultLocation.name,
         latitude: typeof locationData.latitude === 'number' ? locationData.latitude : defaultLocation.latitude,
@@ -125,7 +133,7 @@ function App() {
   }
 
   const saveItinerary = (daysToSave, locationToSave) => {
-    const cleanedDays = daysToSave.map((day) => {
+    const cleanedDays = canonicalizeDays(daysToSave).map((day) => {
       const normalized = normalizeDay(day)
       return {
         ...normalized,
@@ -274,11 +282,11 @@ function App() {
           const parsed = JSON.parse(localData)
           const { days: parsedDays, location: parsedLocation } = normalizeRemoteData(parsed)
           const sortedDays = parsedDays.slice().sort((a, b) => a.day - b.day)
-          setDays(sortedDays)
+          setDays(canonicalizeDays(sortedDays))
           setLocation(parsedLocation)
           setLocationQuery(parsedLocation.name)
-          setCurrentDay(sortedDays[0]?.day ?? 1)
-          saveItinerary(sortedDays, parsedLocation)
+          setCurrentDay(canonicalizeDays(sortedDays)[0]?.day ?? 1)
+          saveItinerary(canonicalizeDays(sortedDays), parsedLocation)
         } catch (error) {
           const initial = [{ day: 1, date: new Date().toISOString().slice(0, 10), items: [] }]
           setDays(initial)
@@ -336,7 +344,7 @@ function App() {
 
   const updateDays = (newDays) => {
     setHistory((prev) => [...prev, days])
-    setDays(newDays)
+    setDays(canonicalizeDays(newDays))
   }
 
   const undo = () => {
