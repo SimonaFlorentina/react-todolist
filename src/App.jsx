@@ -23,13 +23,20 @@ function App() {
 
   const itineraryRef = ref(db, 'itinerary')
 
+  const normalizeRemoteData = (remote) => {
+    if (Array.isArray(remote)) return remote
+    if (remote && typeof remote === 'object') return Object.values(remote)
+    return []
+  }
+
   useEffect(() => {
     const localData = localStorage.getItem('itinerary')
     const unsubscribe = onValue(itineraryRef, (snapshot) => {
       const remote = snapshot.val()
       if (remote) {
-        setDays(remote)
-        if (remote.length > 0) setCurrentDay(remote[0].day)
+        const parsedRemote = normalizeRemoteData(remote)
+        setDays(parsedRemote)
+        if (parsedRemote.length > 0) setCurrentDay(parsedRemote[0].day)
       } else if (localData) {
         const parsed = JSON.parse(localData)
         setDays(parsed)
