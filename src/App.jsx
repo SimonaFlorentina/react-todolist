@@ -92,18 +92,50 @@ function App() {
   })
 
   const normalizeRemoteData = (remote) => {
-    const rawDays = Array.isArray(remote)
-      ? remote
-      : remote && typeof remote === 'object' && remote.days
-        ? Array.isArray(remote.days)
+    const isDayObject = (entry) => entry && typeof entry === 'object' && !Array.isArray(entry) && (
+      entry.day != null || entry.date != null || entry.items != null
+    )
+
+    const isLocationEntry = (entry) => entry && typeof entry === 'object' &&
+      typeof entry.latitude === 'number' && typeof entry.longitude === 'number' &&
+      typeof entry.name === 'string'
+
+    const isLegacyRemoteArray = (value) =>
+      Array.isArray(value) &&
+      value.length === 2 &&
+      Array.isArray(value[0]) &&
+      isLocationEntry(value[1])
+
+    let rawDays = []
+    let locationData = defaultLocation
+
+    if (Array.isArray(remote)) {
+      if (isLegacyRemoteArray(remote)) {
+        rawDays = remote[0]
+        locationData = remote[1]
+      } else {
+        const locationEntry = remote.find(isLocationEntry)
+        const dayEntries = remote.filter(isDayObject)
+        if (dayEntries.length > 0) rawDays = dayEntries
+        if (locationEntry) locationData = locationEntry
+      }
+    } else if (remote && typeof remote === 'object') {
+      if (remote.days) {
+        rawDays = Array.isArray(remote.days)
           ? remote.days
           : Object.keys(remote.days)
               .sort((a, b) => Number(a) - Number(b))
               .map((key) => remote.days[key])
-        : []
-    const locationData = remote && typeof remote === 'object' && remote.location
-      ? remote.location
-      : defaultLocation
+      } else if (isDayObject(remote)) {
+        rawDays = [remote]
+      }
+
+      if (remote.location && typeof remote.location === 'object') {
+        locationData = remote.location
+      } else if (isLocationEntry(remote)) {
+        locationData = remote
+      }
+    }
 
     return {
       days: canonicalizeDays(rawDays),
@@ -145,9 +177,13 @@ function App() {
     set(itineraryRef, {
       days: toFirebaseList(cleanedDays),
       location: cleanedLocation
-    }).finally(() => {
-      ownSaveRef.current = false
     })
+      .catch((error) => {
+        console.error('Firebase save error:', error)
+      })
+      .finally(() => {
+        ownSaveRef.current = false
+      })
   }
 
   const weatherCodeToDescription = (code) => {
