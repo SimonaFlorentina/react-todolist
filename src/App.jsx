@@ -649,15 +649,16 @@ function App() {
             <div className={`weather-card ${weatherClass}`}>
               {currentWeather ? (
                 <>
-                  <div className="weather-card-header">
+                      <div className="weather-card-header">
                     <div className="weather-icon">{weatherEmoji}</div>
                     <div>
                       <div className="weather-label">Vremea {formatDate(currentDayData.date)}</div>
                       <div className="weather-value">{currentWeather.summary?.description}</div>
+                      <div className="weather-subtitle">{location.name}</div>
                     </div>
                     <div className="weather-temp-large">{currentWeather.summary?.temp.toFixed(0)}°</div>
                   </div>
-                  <div className="weather-forecast-title">Prognoza la fiecare 2h</div>
+                  <div className="weather-forecast-title">Prognoza pe 2 ore</div>
                   <div className="weather-forecast-grid">
                     {currentWeather.intervals.map((slot) => (
                       <div key={`${currentDayData.date}-${slot.time}`} className="weather-slot">
