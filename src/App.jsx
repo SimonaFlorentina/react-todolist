@@ -215,13 +215,27 @@ function App() {
     return '⛅'
   }
 
+  const getHourlyWeatherIcon = (description, time) => {
+    const hour = Number(time.split(':')[0])
+    const isNight = hour >= 20 || hour < 6
+    const value = description?.toLowerCase() || ''
+
+    if (value.includes('senin')) return isNight ? '🌙' : '☀️'
+    if (value.includes('parțial')) return isNight ? '🌙☁️' : '🌤️'
+    if (value.includes('ploios')) return isNight ? '🌧️' : '🌧️'
+    if (value.includes('furtună')) return isNight ? '⛈️' : '⛈️'
+    if (value.includes('cețos')) return isNight ? '🌫️' : '🌥️'
+    if (value.includes('ninsoare')) return isNight ? '❄️' : '🌨️'
+    return isNight ? '🌙' : '⛅'
+  }
+
   const buildHourlyForecast = (hourly) => {
     const hourlyData = {}
     hourly.time.forEach((timestamp, index) => {
       const date = timestamp.slice(0, 10)
       const time = timestamp.slice(11, 16)
       const description = weatherCodeToDescription(hourly.weathercode[index])
-      const icon = getWeatherEmoji(description)
+      const icon = getHourlyWeatherIcon(description, time)
       const temp = hourly.temperature_2m[index]
 
       if (!hourlyData[date]) hourlyData[date] = []
