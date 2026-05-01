@@ -371,7 +371,7 @@ function App() {
     if (!range) return
     const today = new Date().toISOString().slice(0, 10)
     const maxForecast = new Date()
-    maxForecast.setDate(new Date().getDate() + 16)
+    maxForecast.setDate(new Date().getDate() + 15)
     const maxForecastDate = maxForecast.toISOString().slice(0, 10)
     const startDate = today
     const endDate = range.maxDate > maxForecastDate ? maxForecastDate : range.maxDate
