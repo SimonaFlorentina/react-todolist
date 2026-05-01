@@ -12,10 +12,74 @@ const CATEGORIES = {
 
 function App() {
   const defaultLocation = {
-    name: 'Bucharest, RO',
-    latitude: 44.4268,
-    longitude: 26.1025
+    name: 'Mediterranean Cruise',
+    latitude: 40.8518,
+    longitude: 14.2681
   }
+
+  const defaultDays = [
+    {
+      day: 1,
+      date: '2025-05-18',
+      items: [
+        { id: 1, title: 'Naples (Pompeii) - Embarkation', category: 'transport', time: '20:00', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 2,
+      date: '2025-05-19',
+      items: [
+        { id: 2, title: 'Messina (Taormina) - Arrival', category: 'activities', time: '09:00', price: 0, link: '', done: false },
+        { id: 3, title: 'Messina (Taormina) - Departure', category: 'transport', time: '18:00', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 3,
+      date: '2025-05-20',
+      items: [
+        { id: 4, title: 'Valletta - Arrival', category: 'activities', time: '08:00', price: 0, link: '', done: false },
+        { id: 5, title: 'Valletta - Departure', category: 'transport', time: '17:00', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 4,
+      date: '2025-05-21',
+      items: [
+        { id: 6, title: 'At sea', category: 'other', time: '', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 5,
+      date: '2025-05-22',
+      items: [
+        { id: 7, title: 'Barcelona - Arrival', category: 'activities', time: '08:00', price: 0, link: '', done: false },
+        { id: 8, title: 'Barcelona - Departure', category: 'transport', time: '18:00', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 6,
+      date: '2025-05-23',
+      items: [
+        { id: 9, title: 'Marseille (Provence) - Arrival', category: 'activities', time: '07:00', price: 0, link: '', done: false },
+        { id: 10, title: 'Marseille (Provence) - Departure', category: 'transport', time: '18:00', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 7,
+      date: '2025-05-24',
+      items: [
+        { id: 11, title: 'Genoa (Portofino) - Arrival', category: 'activities', time: '08:00', price: 0, link: '', done: false },
+        { id: 12, title: 'Genoa (Portofino) - Departure', category: 'transport', time: '16:00', price: 0, link: '', done: false }
+      ]
+    },
+    {
+      day: 8,
+      date: '2025-05-25',
+      items: [
+        { id: 13, title: 'Naples (Pompeii) - Arrival', category: 'activities', time: '13:00', price: 0, link: '', done: false }
+      ]
+    }
+  ]
 
   const [days, setDays] = useState([])
   const [history, setHistory] = useState([])
@@ -45,6 +109,8 @@ function App() {
       price: item.price ? Number(item.price) : 0,
       time: item.time ?? '',
       link: item.link ?? '',
+      temp: item.temp != null ? Number(item.temp) : null,
+      weatherIcon: item.weatherIcon ?? '',
       done: Boolean(item.done)
     }
   }
@@ -387,14 +453,12 @@ function App() {
           setCurrentDay(canonicalizeDays(sortedDays)[0]?.day ?? 1)
           saveItinerary(canonicalizeDays(sortedDays), parsedLocation)
         } catch (error) {
-          const initial = [{ day: 1, date: new Date().toISOString().slice(0, 10), items: [] }]
-          setDays(initial)
-          saveItinerary(initial, defaultLocation)
+          setDays(defaultDays)
+          saveItinerary(defaultDays, defaultLocation)
         }
       } else {
-        const initial = [{ day: 1, date: new Date().toISOString().slice(0, 10), items: [] }]
-        setDays(initial)
-        saveItinerary(initial, defaultLocation)
+        setDays(defaultDays)
+        saveItinerary(defaultDays, defaultLocation)
       }
       setRemoteLoaded(true)
     })
@@ -489,6 +553,9 @@ function App() {
   const addItem = () => {
     if (!input.trim()) return
 
+    const currentDate = days.find(d => d.day === currentDay)?.date || new Date().toISOString().slice(0, 10)
+    const weatherMeta = getActivityWeatherMeta(currentDate, time)
+
     const updatedDays = days.map(d => {
       if (d.day === currentDay) {
         const newItems = [...d.items]
@@ -497,7 +564,16 @@ function App() {
             ...d,
             items: newItems.map(item =>
               item.id === editItemId
-                ? { ...item, title: input, category, price: price ? parseFloat(price) : 0, time, link }
+                ? {
+                    ...item,
+                    title: input,
+                    category,
+                    price: price ? parseFloat(price) : 0,
+                    time,
+                    link,
+                    temp: weatherMeta.temp,
+                    weatherIcon: weatherMeta.icon || item.weatherIcon
+                  }
                 : item
             )
           }
@@ -512,6 +588,8 @@ function App() {
             price: price ? parseFloat(price) : 0,
             time,
             link,
+            temp: weatherMeta.temp,
+            weatherIcon: weatherMeta.icon,
             done: false
           }]
         }
@@ -796,9 +874,11 @@ function App() {
                     <span className="category-badge">{CATEGORIES[item.category].emoji}</span>
                     {(() => {
                       const weatherMeta = getActivityWeatherMeta(currentDayData.date, item.time)
-                      return weatherMeta.icon ? (
+                      const icon = weatherMeta.icon || item.weatherIcon
+                      const temp = weatherMeta.temp != null ? weatherMeta.temp : item.temp
+                      return icon ? (
                         <span className="item-weather-temp">
-                          {weatherMeta.icon} {weatherMeta.temp != null ? `${weatherMeta.temp.toFixed(0)}°` : ''}
+                          {icon} {temp != null ? `${Number(temp).toFixed(0)}°` : ''}
                         </span>
                       ) : null
                     })()}
