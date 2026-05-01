@@ -314,13 +314,13 @@ h2 {
   background-size: 120px auto;
 }
 
-.weather-card-header {
+.weather-card-header-row {
   position: relative;
   display: grid;
   grid-template-columns: 44px 1fr auto;
   gap: 12px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .weather-icon {
@@ -344,6 +344,20 @@ h2 {
   margin-top: 4px;
   font-size: 12px;
   color: #54648b;
+}
+
+.weather-card-subrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.weather-value {
+  font-weight: 700;
+  color: #2f3b5c;
 }
 
 .weather-forecast-title {
@@ -408,8 +422,7 @@ h2 {
 
 .weather-value {
   font-weight: 700;
-  color: #333;
-  margin-bottom: 4px;
+  color: #2f3b5c;
 }
 
 .weather-temp {
@@ -541,9 +554,26 @@ h2 {
 
 .item-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.item-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .checkbox {
@@ -560,10 +590,10 @@ h2 {
 }
 
 .item-time {
-  font-size: 13px;
+  font-size: 12px;
   background: #e0e7ff;
   color: #3730a3;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   white-space: nowrap;
   font-weight: 600;
@@ -571,14 +601,16 @@ h2 {
 
 .item-title {
   flex: 1;
+  min-width: 0;
   color: #333;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 700;
   word-break: break-word;
 }
 
 .item-weather-icon {
   font-size: 18px;
-  margin-left: 8px;
+  margin-left: 0;
 }
 
 .item.done .item-title {
@@ -674,6 +706,20 @@ h2 {
   }
 
   .item-header {
-    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .item-main {
+    width: 100%;
+  }
+
+  .item-meta {
+    width: 100%;
+  }
+
+  .item-price {
+    width: 100%;
+    text-align: right;
+    margin-top: 6px;
   }
 }

@@ -649,16 +649,18 @@ function App() {
             <div className={`weather-card ${weatherClass}`}>
               {currentWeather ? (
                 <>
-                      <div className="weather-card-header">
+                      <div className="weather-card-header-row">
                     <div className="weather-icon">{weatherEmoji}</div>
-                    <div>
+                    <div className="weather-main-info">
                       <div className="weather-label">Vremea {formatDate(currentDayData.date)}</div>
-                      <div className="weather-value">{currentWeather.summary?.description}</div>
                       <div className="weather-subtitle">{location.name}</div>
                     </div>
                     <div className="weather-temp-large">{currentWeather.summary?.temp.toFixed(0)}°</div>
                   </div>
-                  <div className="weather-forecast-title">Prognoza pe 2 ore</div>
+                  <div className="weather-card-subrow">
+                    <div className="weather-value">{currentWeather.summary?.description}</div>
+                    <div className="weather-forecast-title">Prognoza pe 2 ore</div>
+                  </div>
                   <div className="weather-forecast-grid">
                     {currentWeather.intervals.map((slot) => (
                       <div key={`${currentDayData.date}-${slot.time}`} className="weather-slot">
@@ -749,10 +751,14 @@ function App() {
                   onChange={() => toggleItem(currentDay, item.id)}
                   className="checkbox"
                 />
-                <span className="category-badge">{CATEGORIES[item.category].emoji}</span>
-                {item.time && <span className="item-time">⏰ {item.time}</span>}
-                <span className="item-title">{item.title}</span>
-                <span className="item-weather-icon">{getActivityWeatherIcon(currentDayData.date, item.time)}</span>
+                <div className="item-main">
+                  <div className="item-top-row">
+                    {item.time && <span className="item-time">⏰ {item.time}</span>}
+                    <span className="category-badge">{CATEGORIES[item.category].emoji}</span>
+                    <span className="item-weather-icon">{getActivityWeatherIcon(currentDayData.date, item.time)}</span>
+                  </div>
+                  <span className="item-title">{item.title}</span>
+                </div>
                 {item.price > 0 && <span className="item-price">{item.price.toFixed(2)} €</span>}
               </div>
               
