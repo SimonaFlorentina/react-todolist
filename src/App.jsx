@@ -553,16 +553,16 @@ function App() {
   const addItem = () => {
     if (!input.trim()) return
 
-    const currentDate = days.find(d => d.day === currentDay)?.date || new Date().toISOString().slice(0, 10)
-    const weatherMeta = getActivityWeatherMeta(currentDate, time)
+    setDays((prevDays) => {
+      const currentDate = prevDays.find(d => d.day === currentDay)?.date || new Date().toISOString().slice(0, 10)
+      const weatherMeta = getActivityWeatherMeta(currentDate, time)
 
-    const updatedDays = days.map(d => {
-      if (d.day === currentDay) {
-        const newItems = [...d.items]
+      const updatedDays = canonicalizeDays(prevDays.map(d => {
+        if (d.day !== currentDay) return d
         if (editItemId) {
           return {
             ...d,
-            items: newItems.map(item =>
+            items: d.items.map(item =>
               item.id === editItemId
                 ? {
                     ...item,
@@ -581,7 +581,7 @@ function App() {
 
         return {
           ...d,
-          items: [...newItems, {
+          items: [...d.items, {
             id: Date.now(),
             title: input,
             category,
@@ -593,10 +593,12 @@ function App() {
             done: false
           }]
         }
-      }
-      return d
+      }))
+
+      setHistory((prevHistory) => [...prevHistory, prevDays])
+      return updatedDays
     })
-    updateDays(updatedDays)
+
     setInput('')
     setPrice('')
     setTime('')
@@ -747,7 +749,7 @@ function App() {
               )}
             </div>
           ))}
-          <button onClick={addDay} className="btn-add-day">+ Adaugă Zi</button>
+          <button type="button" onClick={addDay} className="btn-add-day">+ Adaugă Zi</button>
         </div>
 
         {/* Add Item Form */}
@@ -842,7 +844,7 @@ function App() {
               className="input-link"
             />
 
-            <button onClick={addItem} className="btn-add">{editItemId ? 'Salvează' : 'Adaugă'}</button>
+            <button type="button" onClick={addItem} className="btn-add">{editItemId ? 'Salvează' : 'Adaugă'}</button>
           </div>
         </div>
 
