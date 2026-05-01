@@ -229,6 +229,31 @@ function App() {
     return isNight ? '🌙' : '⛅'
   }
 
+  const getActivityWeatherIcon = (date, time) => {
+    const dayWeather = weatherCache[date]
+    if (!dayWeather) return ''
+    const targetTime = time?.slice(0, 5)
+    if (!targetTime) return dayWeather.summary?.icon || ''
+
+    let best = dayWeather.intervals[0]
+    let bestDiff = Math.abs(
+      Number(best.time.slice(0, 2)) * 60 + Number(best.time.slice(3)) -
+      (Number(targetTime.slice(0, 2)) * 60 + Number(targetTime.slice(3)))
+    )
+
+    dayWeather.intervals.forEach((slot) => {
+      const slotMinutes = Number(slot.time.slice(0, 2)) * 60 + Number(slot.time.slice(3))
+      const targetMinutes = Number(targetTime.slice(0, 2)) * 60 + Number(targetTime.slice(3))
+      const diff = Math.abs(slotMinutes - targetMinutes)
+      if (diff < bestDiff) {
+        best = slot
+        bestDiff = diff
+      }
+    })
+
+    return best?.icon || ''
+  }
+
   const buildHourlyForecast = (hourly) => {
     const hourlyData = {}
     hourly.time.forEach((timestamp, index) => {
@@ -638,8 +663,8 @@ function App() {
                       <div key={`${currentDayData.date}-${slot.time}`} className="weather-slot">
                         <div className="weather-slot-time">{slot.time}</div>
                         <div className="weather-slot-icon">{slot.icon}</div>
-                        <div className="weather-slot-desc">{slot.description}</div>
                         <div className="weather-slot-temp">{slot.temp.toFixed(0)}°</div>
+                        <div className="weather-slot-desc">{slot.description}</div>
                       </div>
                     ))}
                   </div>
@@ -726,6 +751,7 @@ function App() {
                 <span className="category-badge">{CATEGORIES[item.category].emoji}</span>
                 {item.time && <span className="item-time">⏰ {item.time}</span>}
                 <span className="item-title">{item.title}</span>
+                <span className="item-weather-icon">{getActivityWeatherIcon(currentDayData.date, item.time)}</span>
                 {item.price > 0 && <span className="item-price">{item.price.toFixed(2)} €</span>}
               </div>
               
