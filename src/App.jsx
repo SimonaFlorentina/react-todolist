@@ -229,11 +229,14 @@ function App() {
     return isNight ? '🌙' : '⛅'
   }
 
-  const getActivityWeatherIcon = (date, time) => {
+  const getActivityWeatherMeta = (date, time) => {
     const dayWeather = weatherCache[date]
-    if (!dayWeather) return ''
+    if (!dayWeather) return { icon: '', temp: null }
     const targetTime = time?.slice(0, 5)
-    if (!targetTime) return dayWeather.summary?.icon || ''
+    if (!targetTime) return {
+      icon: dayWeather.summary?.icon || '',
+      temp: dayWeather.summary?.temp ?? null
+    }
 
     let best = dayWeather.intervals[0]
     let bestDiff = Math.abs(
@@ -251,8 +254,10 @@ function App() {
       }
     })
 
-    return best?.icon || ''
+    return { icon: best?.icon || '', temp: best?.temp ?? null }
   }
+
+  const getActivityWeatherIcon = (date, time) => getActivityWeatherMeta(date, time).icon
 
   const buildHourlyForecast = (hourly) => {
     const hourlyData = {}
@@ -479,14 +484,28 @@ function App() {
     setCurrentDay(nextDay.day)
   }
 
+  const [editItemId, setEditItemId] = useState(null)
+
   const addItem = () => {
     if (!input.trim()) return
 
     const updatedDays = days.map(d => {
       if (d.day === currentDay) {
+        const newItems = [...d.items]
+        if (editItemId) {
+          return {
+            ...d,
+            items: newItems.map(item =>
+              item.id === editItemId
+                ? { ...item, title: input, category, price: price ? parseFloat(price) : 0, time, link }
+                : item
+            )
+          }
+        }
+
         return {
           ...d,
-          items: [...d.items, {
+          items: [...newItems, {
             id: Date.now(),
             title: input,
             category,
@@ -505,6 +524,7 @@ function App() {
     setTime('')
     setLink('')
     setCategory('activities')
+    setEditItemId(null)
   }
 
   const deleteItem = (dayNum, itemId) => {
@@ -518,6 +538,25 @@ function App() {
       return d
     })
     updateDays(updated)
+    if (editItemId === itemId) {
+      setEditItemId(null)
+      setInput('')
+      setPrice('')
+      setTime('')
+      setLink('')
+      setCategory('activities')
+    }
+  }
+
+  const editItem = (dayNum, itemId) => {
+    const item = days.find(d => d.day === dayNum)?.items.find(i => i.id === itemId)
+    if (!item) return
+    setEditItemId(itemId)
+    setInput(item.title)
+    setCategory(item.category)
+    setPrice(item.price ? item.price.toString() : '')
+    setTime(item.time || '')
+    setLink(item.link || '')
   }
 
   const toggleItem = (dayNum, itemId) => {
@@ -725,7 +764,7 @@ function App() {
               className="input-link"
             />
 
-            <button onClick={addItem} className="btn-add">Adaugă</button>
+            <button onClick={addItem} className="btn-add">{editItemId ? 'Salvează' : 'Adaugă'}</button>
           </div>
         </div>
 
@@ -744,18 +783,25 @@ function App() {
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, item.id)}
             >
-              <div className="item-header">
+              <div className="item-header" onClick={() => editItem(currentDay, item.id)}>
                 <input
                   type="checkbox"
                   checked={item.done}
-                  onChange={() => toggleItem(currentDay, item.id)}
+                  onChange={(e) => { e.stopPropagation(); toggleItem(currentDay, item.id) }}
                   className="checkbox"
                 />
                 <div className="item-main">
                   <div className="item-top-row">
                     {item.time && <span className="item-time">⏰ {item.time}</span>}
                     <span className="category-badge">{CATEGORIES[item.category].emoji}</span>
-                    <span className="item-weather-icon">{getActivityWeatherIcon(currentDayData.date, item.time)}</span>
+                    {(() => {
+                      const weatherMeta = getActivityWeatherMeta(currentDayData.date, item.time)
+                      return weatherMeta.icon ? (
+                        <span className="item-weather-temp">
+                          {weatherMeta.icon} {weatherMeta.temp != null ? `${weatherMeta.temp.toFixed(0)}°` : ''}
+                        </span>
+                      ) : null
+                    })()}
                   </div>
                   <span className="item-title">{item.title}</span>
                 </div>
