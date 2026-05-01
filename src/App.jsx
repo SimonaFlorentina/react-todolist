@@ -215,21 +215,38 @@ function App() {
     return '⛅'
   }
 
+  const buildHourlyForecast = (hourly) => {
+    const hourlyData = {}
+    hourly.time.forEach((timestamp, index) => {
+      const date = timestamp.slice(0, 10)
+      const time = timestamp.slice(11, 16)
+      const description = weatherCodeToDescription(hourly.weathercode[index])
+      const icon = getWeatherEmoji(description)
+      const temp = hourly.temperature_2m[index]
+
+      if (!hourlyData[date]) hourlyData[date] = []
+      hourlyData[date].push({ time, temp, description, icon })
+    })
+
+    const twoHourData = {}
+    Object.entries(hourlyData).forEach(([date, entries]) => {
+      const filtered = entries.filter((_, idx) => idx % 2 === 0).slice(0, 12)
+      twoHourData[date] = {
+        summary: filtered[0] || entries[0] || null,
+        intervals: filtered
+      }
+    })
+    return twoHourData
+  }
+
   const fetchWeatherForRange = async (startDate, endDate) => {
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe/Bucharest&start_date=${startDate}&end_date=${endDate}`
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&hourly=weathercode,temperature_2m&timezone=Europe/Bucharest&start_date=${startDate}&end_date=${endDate}`
       const response = await fetch(url)
       const data = await response.json()
-      if (!data || !data.daily) return
+      if (!data || !data.hourly) return
 
-      const newCache = {}
-      data.daily.time.forEach((date, index) => {
-        newCache[date] = {
-          description: weatherCodeToDescription(data.daily.weathercode[index]),
-          tempMin: data.daily.temperature_2m_min[index],
-          tempMax: data.daily.temperature_2m_max[index]
-        }
-      })
+      const newCache = buildHourlyForecast(data.hourly)
       setWeatherCache((prev) => ({ ...prev, ...newCache }))
     } catch (error) {
       console.error('Weather fetch error:', error)
@@ -513,8 +530,8 @@ function App() {
 
   const currentDayData = days.find(d => d.day === currentDay) || { date: new Date().toISOString().slice(0, 10), items: [] }
   const currentWeather = weatherCache[currentDayData.date]
-  const weatherClass = currentWeather ? getWeatherClass(currentWeather.description) : ''
-  const weatherEmoji = currentWeather ? getWeatherEmoji(currentWeather.description) : '🌤️'
+  const weatherClass = currentWeather ? getWeatherClass(currentWeather.summary?.description) : ''
+  const weatherEmoji = currentWeather ? currentWeather.summary?.icon || '🌤️' : '🌤️'
   const dayTotal = (currentDayData.items || []).reduce((sum, item) => sum + (item.price || 0), 0)
   const tripTotal = days.reduce((sum, day) => 
     sum + ((day.items || []).reduce((daySum, item) => daySum + (item.price || 0), 0)), 0
@@ -590,12 +607,28 @@ function App() {
                 className="input-date"
               />
             </div>
-            <div className="weather-card">
+            <div className={`weather-card ${weatherClass}`}>
               {currentWeather ? (
                 <>
-                  <div className="weather-label">Vremea {formatDate(currentDayData.date)}</div>
-                  <div className="weather-value">{currentWeather.description}</div>
-                  <div className="weather-temp">{currentWeather.tempMin.toFixed(0)}° / {currentWeather.tempMax.toFixed(0)}°</div>
+                  <div className="weather-card-header">
+                    <div className="weather-icon">{weatherEmoji}</div>
+                    <div>
+                      <div className="weather-label">Vremea {formatDate(currentDayData.date)}</div>
+                      <div className="weather-value">{currentWeather.summary?.description}</div>
+                    </div>
+                    <div className="weather-temp-large">{currentWeather.summary?.temp.toFixed(0)}°</div>
+                  </div>
+                  <div className="weather-forecast-title">Prognoza la fiecare 2h</div>
+                  <div className="weather-forecast-grid">
+                    {currentWeather.intervals.map((slot) => (
+                      <div key={`${currentDayData.date}-${slot.time}`} className="weather-slot">
+                        <div className="weather-slot-time">{slot.time}</div>
+                        <div className="weather-slot-icon">{slot.icon}</div>
+                        <div className="weather-slot-desc">{slot.description}</div>
+                        <div className="weather-slot-temp">{slot.temp.toFixed(0)}°</div>
+                      </div>
+                    ))}
+                  </div>
                 </>
               ) : (
                 <div className="weather-empty">Prognoza apare aici după alegerea datei.</div>
