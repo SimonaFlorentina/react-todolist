@@ -264,7 +264,8 @@ function App() {
         }
         setLocation(newLocation)
         setLocationQuery(newLocation.name)
-        setLocationMessage(`Locație schimbată la ${newLocation.name}`)
+        setWeatherCache({})
+        setLocationMessage(`Locație setată la ${newLocation.name}`)
         return
       }
       setLocationMessage('Locație negăsită. Folosesc locația implicită.')
@@ -289,6 +290,7 @@ function App() {
         }
         setLocation(newLocation)
         setLocationQuery(newLocation.name)
+        setWeatherCache({})
         setLocationMessage('Locația actuală a fost setată.')
       },
       () => {
@@ -538,7 +540,9 @@ function App() {
           <button onClick={searchLocation} className="btn-search-location">Caută</button>
           <button onClick={useBrowserLocation} className="btn-location-now">Locație actuală</button>
         </div>
-        <div className="location-message">{locationMessage || `Locație: ${location.name}`}</div>
+        {locationMessage && (
+          <div className="location-message">{locationMessage}</div>
+        )}
 
         <button 
           onClick={undo} 
